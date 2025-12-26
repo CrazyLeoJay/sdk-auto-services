@@ -6,8 +6,8 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import site.leojay.auto.services.utils.AutoProxy
 import site.leojay.auto.services.utils.ModulesHelper
 import site.leojay.auto.services.utils.ProxyHelperBuilder
-import site.leojay.auto.services.utils.annotation.SDKModuleSingleInstance
 import site.leojay.auto.services.utils.annotation.SDKModule
+import site.leojay.auto.services.utils.annotation.SDKModuleSingleInstance
 import java.util.logging.Logger
 import javax.annotation.processing.AbstractProcessor
 import javax.annotation.processing.Processor
@@ -49,7 +49,7 @@ class SingleProcessor : AbstractProcessor() {
         return FileSpec.builder(annotation.getPackagePath(element), annotation.value)
             .addImport("${ProxyHelperBuilder::class.qualifiedName}.Companion", "register")
             .addType(
-                TypeSpec.objectBuilder(annotation.value)
+                TypeSpec.classBuilder(annotation.value)
                     .apply {
                         try {
                             Class.forName("android.support.annotation.Keep")
@@ -59,10 +59,15 @@ class SingleProcessor : AbstractProcessor() {
                             // SDK需要保留名称，且有时候生成的单例会通过反射获取，所以也要保留
                         }
                     }
-                    .addFunction(
-                        FunSpec.builder("instance")
-                            .addCode("return SingleEnum.INSTANCE.instance")
-                            .returns(thisInstanceType)
+                    .addType(
+                        TypeSpec.companionObjectBuilder()
+                            .addFunction(
+                                FunSpec.builder("instance")
+                                    .addAnnotation(JvmStatic::class)
+                                    .addCode("return SingleEnum.INSTANCE.instance")
+                                    .returns(thisInstanceType)
+                                    .build()
+                            )
                             .build()
                     )
                     .addType(
