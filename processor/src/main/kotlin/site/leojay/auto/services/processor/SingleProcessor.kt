@@ -6,7 +6,7 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import site.leojay.auto.services.utils.AutoProxy
 import site.leojay.auto.services.utils.ModulesHelper
 import site.leojay.auto.services.utils.ProxyHelperBuilder
-import site.leojay.auto.services.utils.annotation.MakeSingleObject
+import site.leojay.auto.services.utils.annotation.SDKModuleSingleInstance
 import site.leojay.auto.services.utils.annotation.SDKModule
 import java.util.logging.Logger
 import javax.annotation.processing.AbstractProcessor
@@ -36,14 +36,14 @@ class SingleProcessor : AbstractProcessor() {
         annotations: Set<TypeElement?>?,
         roundEnv: RoundEnvironment?,
     ): Boolean {
-        roundEnv?.getElementsAnnotatedWith(MakeSingleObject::class.java)?.forEach { element ->
+        roundEnv?.getElementsAnnotatedWith(SDKModuleSingleInstance::class.java)?.forEach { element ->
             createSingleObject(element, roundEnv).writeTo(processingEnv.filer)
         }
         return true
     }
 
     fun createSingleObject(element: Element, roundEnv: RoundEnvironment): FileSpec {
-        val annotation = element.getAnnotation(MakeSingleObject::class.java)!!
+        val annotation = element.getAnnotation(SDKModuleSingleInstance::class.java)!!
 
         val thisInstanceType = getTypeForTry { annotation.implInterface }?.asTypeName()!!
         return FileSpec.builder(annotation.getPackagePath(element), annotation.value)
@@ -169,7 +169,7 @@ class SingleProcessor : AbstractProcessor() {
 
     override fun getSupportedAnnotationTypes(): Set<String?> {
         return setOf(
-            MakeSingleObject::class.java.canonicalName,
+            SDKModuleSingleInstance::class.java.canonicalName,
             SDKModule::class.java.canonicalName,
         )
     }

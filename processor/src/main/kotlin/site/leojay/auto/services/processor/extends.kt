@@ -1,6 +1,6 @@
 package site.leojay.auto.services.processor
 
-import site.leojay.auto.services.utils.annotation.MakeSingleObject
+import site.leojay.auto.services.utils.annotation.SDKModuleSingleInstance
 import javax.lang.model.element.Element
 import javax.lang.model.type.MirroredTypeException
 import javax.lang.model.type.MirroredTypesException
@@ -14,7 +14,7 @@ import javax.lang.model.type.TypeMirror
  * create for 2025/12/22
  */
 
-fun MakeSingleObject.getPackagePath(element: Element): String {
+fun SDKModuleSingleInstance.getPackagePath(element: Element): String {
     if (this.packagePath.isBlank()) {
         return element.toString().replace("." + element.simpleName, "")
     }

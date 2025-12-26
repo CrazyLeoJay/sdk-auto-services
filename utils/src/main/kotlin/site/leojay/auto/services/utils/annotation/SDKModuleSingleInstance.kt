@@ -16,7 +16,7 @@ import kotlin.reflect.KClass
 @Retention(AnnotationRetention.SOURCE)
 @Target(AnnotationTarget.CLASS)
 @MustBeDocumented
-annotation class MakeSingleObject(
+annotation class SDKModuleSingleInstance(
     val value: String,
     val implInterface: KClass<*>,
     val packagePath: String = "",

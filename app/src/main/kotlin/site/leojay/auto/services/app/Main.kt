@@ -2,7 +2,7 @@ package site.leojay.auto.services.app
 
 import site.leojay.auto.services.utils.ProxyHelperBuilder
 import site.leojay.auto.services.utils.ProxyInstance
-import site.leojay.auto.services.utils.annotation.MakeSingleObject
+import site.leojay.auto.services.utils.annotation.SDKModuleSingleInstance
 import site.leojay.auto.services.utils.annotation.SDKModule
 import java.util.logging.Logger
 
@@ -30,7 +30,7 @@ interface AuthFactory : InitFactory
 @SDKModule
 interface PayFactory : InitFactory
 
-@MakeSingleObject("LeojaySDK", implInterface = SDKFactory::class, proxy = false)
+@SDKModuleSingleInstance("LeojaySDK", implInterface = SDKFactory::class, proxy = false)
 class SingleService(val module: ProxyHelperBuilder<SDKFactory>) : SDKFactory {
     companion object {
         private val log = Logger.getLogger(SingleService::class.java.name)
@@ -46,7 +46,7 @@ class SingleService(val module: ProxyHelperBuilder<SDKFactory>) : SDKFactory {
 @MustBeDocumented
 annotation class ObjectAnnotation
 
-@MakeSingleObject("LeojayProxySDK", implInterface = SDKFactory::class, proxy = true)
+@SDKModuleSingleInstance("LeojayProxySDK", implInterface = SDKFactory::class, proxy = true)
 class ProxySingleService(module: ProxyHelperBuilder<SDKFactory>) : ProxyInstance<SDKFactory>(module), SDKFactory {
 
     companion object {
