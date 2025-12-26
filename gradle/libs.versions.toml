@@ -1,0 +1,33 @@
+# Version catalog is a central place for you to declare and version dependencies
+# https://docs.gradle.org/current/userguide/platforms.html#sub:version-catalog
+# https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
+
+[versions]
+kotlin = "2.2.20"
+kotlinxDatetime = "0.6.2"
+kotlinxSerializationJSON = "1.8.1"
+kotlinxCoroutines = "1.10.2"
+
+[libraries]
+kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+kotlinxDatetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
+kotlinxSerialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJSON" }
+kotlinxCoroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+
+kotlinMetadataJvm = { module = "org.jetbrains.kotlin:kotlin-metadata-jvm", version.ref = "kotlin" }
+takhionKotlinMetadataJvm = { module = "com.github.Takhion:kotlin-metadata", version = "1.0.0" }
+
+squareup-java-poet = { module = "com.squareup:javapoet", version = "1.13.0" }
+squareup-kotlin-poet = { module = "com.squareup:kotlinpoet", version = "2.2.0" }
+squareup-kotlin-poet-ksp = { module = "com.squareup:kotlinpoet-ksp", version = "2.2.0" }
+squareup-kotlin-poet-metadata = { module = "com.squareup:kotlinpoet-metadata", version = "2.2.0" }
+# https://central.sonatype.com/search?q=com.google.auto.service
+auto-service = { module = "com.google.auto.service:auto-service", version = "1.1.1" }
+auto-service-annotations = { module = "com.google.auto.service:auto-service-annotations", version = "1.1.1" }
+
+# Libraries can be bundled together for easier import
+[bundles]
+kotlinxEcosystem = ["kotlinxDatetime", "kotlinxSerialization", "kotlinxCoroutines", "kotlinMetadataJvm"]
+
+[plugins]
+kotlinPluginSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
