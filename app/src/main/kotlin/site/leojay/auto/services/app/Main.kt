@@ -13,7 +13,7 @@ import java.util.logging.Logger
  * create for 2025/12/22
  */
 
-fun main(args: Array<String>) {
+fun main() {
     LeojayProxySDK.instance().init()
 }
 
@@ -40,6 +40,11 @@ class SingleService(val module: ProxyHelperBuilder<SDKFactory>) : SDKFactory {
         log.info("LeojaySDK init")
     }
 }
+
+@Target(AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.RUNTIME)
+@MustBeDocumented
+annotation class ObjectAnnotation
 
 @MakeSingleObject("LeojayProxySDK", implInterface = SDKFactory::class, proxy = true)
 class ProxySingleService(module: ProxyHelperBuilder<SDKFactory>) : ProxyInstance<SDKFactory>(module), SDKFactory {

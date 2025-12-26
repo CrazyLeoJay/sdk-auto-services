@@ -3,6 +3,7 @@ package site.leojay.auto.services.processor
 import site.leojay.auto.services.utils.annotation.MakeSingleObject
 import javax.lang.model.element.Element
 import javax.lang.model.type.MirroredTypeException
+import javax.lang.model.type.MirroredTypesException
 import javax.lang.model.type.TypeMirror
 
 
@@ -31,4 +32,18 @@ fun getTypeForTry(invoke: () -> Any?): TypeMirror? {
         return e.typeMirror
     }
     return null
+}
+
+fun getTypesForTry(invoke: () -> Any?, result: (TypeMirror) -> Unit = {}) {
+    // 不要直接用annotation.value()，而是用TypeMirror
+    try {
+        // 这里会触发MirroredTypeException
+        invoke()
+    } catch (e: MirroredTypeException) {
+        result(e.typeMirror)
+    } catch (e: MirroredTypesException) {
+        for (mirror in e.typeMirrors) {
+            result(mirror)
+        }
+    }
 }

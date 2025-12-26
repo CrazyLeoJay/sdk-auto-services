@@ -50,6 +50,15 @@ class SingleProcessor : AbstractProcessor() {
             .addImport("${ProxyHelperBuilder::class.qualifiedName}.Companion", "register")
             .addType(
                 TypeSpec.objectBuilder(annotation.value)
+                    .apply {
+                        try {
+                            Class.forName("android.support.annotation.Keep")
+                            addAnnotation(ClassName("android.support.annotation", "Keep"))
+                        } catch (e: ClassNotFoundException) {
+                            // 如果没有Keep类，就忽略，因为Android需要配置混淆，
+                            // SDK需要保留名称，且有时候生成的单例会通过反射获取，所以也要保留
+                        }
+                    }
                     .addFunction(
                         FunSpec.builder("instance")
                             .addCode("return SingleEnum.INSTANCE.instance")
