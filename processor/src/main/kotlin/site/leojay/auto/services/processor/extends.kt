@@ -1,5 +1,6 @@
 package site.leojay.auto.services.processor
 
+import site.leojay.auto.services.utils.annotation.RegisterSDKSingerInstance
 import site.leojay.auto.services.utils.annotation.SDKModuleSingleInstance
 import javax.lang.model.element.Element
 import javax.lang.model.type.MirroredTypeException
@@ -19,6 +20,20 @@ fun SDKModuleSingleInstance.getPackagePath(element: Element): String {
         return element.toString().replace("." + element.simpleName, "")
     }
     return this.packagePath
+}
+
+fun RegisterSDKSingerInstance.getPackagePath(element: Element): String {
+    if (this.packagePath.isBlank()) {
+        return element.toString().replace("." + element.simpleName, "")
+    }
+    return this.packagePath
+}
+
+fun Element.getPackagePath(packagePath: String? = null): String {
+    if (packagePath.isNullOrBlank()) {
+        return this.toString().replace(".$simpleName", "")
+    }
+    return packagePath
 }
 
 
@@ -46,4 +61,8 @@ fun getTypesForTry(invoke: () -> Any?, result: (TypeMirror) -> Unit = {}) {
             result(mirror)
         }
     }
+}
+
+fun List<String>.joinToPackage(): String {
+    return mapNotNull { it.ifBlank { null } }.joinToString(".")
 }

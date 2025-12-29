@@ -1,12 +1,8 @@
 package site.leojay.auto.services.processor
 
 import com.google.auto.service.AutoService
-import com.squareup.kotlinpoet.*
-import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import site.leojay.auto.services.utils.AutoProxy
-import site.leojay.auto.services.utils.ModulesHelper
-import site.leojay.auto.services.utils.ProxyHelperBuilder
-import site.leojay.auto.services.utils.annotation.SDKModule
+import site.leojay.auto.services.processor.builder.SDKProcessor2Builder
+import site.leojay.auto.services.processor.builder.SDKProcessorBuilder
 import site.leojay.auto.services.utils.annotation.SDKModuleSingleInstance
 import java.util.logging.Logger
 import javax.annotation.processing.AbstractProcessor
@@ -14,10 +10,7 @@ import javax.annotation.processing.Processor
 import javax.annotation.processing.RoundEnvironment
 import javax.annotation.processing.SupportedSourceVersion
 import javax.lang.model.SourceVersion
-import javax.lang.model.element.Element
-import javax.lang.model.element.ElementKind
 import javax.lang.model.element.TypeElement
-import kotlin.reflect.KClass
 
 /**
  * 单例注解实现器
@@ -37,145 +30,17 @@ class SingleProcessor : AbstractProcessor() {
         roundEnv: RoundEnvironment?,
     ): Boolean {
         roundEnv?.getElementsAnnotatedWith(SDKModuleSingleInstance::class.java)?.forEach { element ->
-            createSingleObject(element, roundEnv).writeTo(processingEnv.filer)
+//            createSingleObject(element, roundEnv).writeTo(processingEnv.filer)
+            SDKProcessorBuilder(element, roundEnv, processingEnv).build().writeTo(processingEnv.filer)
         }
+        roundEnv?.let { SDKProcessor2Builder.makeFile(roundEnv, processingEnv) }
         return true
-    }
-
-    fun createSingleObject(element: Element, roundEnv: RoundEnvironment): FileSpec {
-        val annotation = element.getAnnotation(SDKModuleSingleInstance::class.java)!!
-
-        val thisInstanceType = getTypeForTry { annotation.implInterface }?.asTypeName()!!
-        return FileSpec.builder(annotation.getPackagePath(element), annotation.value)
-            .addImport("${ProxyHelperBuilder::class.qualifiedName}.Companion", "register")
-            .addType(
-                TypeSpec.classBuilder(annotation.value)
-                    .apply {
-                        try {
-                            Class.forName("android.support.annotation.Keep")
-                            addAnnotation(ClassName("android.support.annotation", "Keep"))
-                        } catch (e: ClassNotFoundException) {
-                            // 如果没有Keep类，就忽略，因为Android需要配置混淆，
-                            // SDK需要保留名称，且有时候生成的单例会通过反射获取，所以也要保留
-                        }
-                    }
-                    .addType(
-                        TypeSpec.companionObjectBuilder()
-                            .addFunction(
-                                FunSpec.builder("instance")
-                                    .addAnnotation(JvmStatic::class)
-                                    .addCode("return SingleEnum.INSTANCE.instance")
-                                    .returns(thisInstanceType)
-                                    .build()
-                            )
-                            .build()
-                    )
-                    .addType(
-                        TypeSpec.enumBuilder("SingleEnum")
-                            .addModifiers(KModifier.PRIVATE)
-                            .primaryConstructor(
-                                FunSpec.constructorBuilder().addParameter(
-                                    ParameterSpec.builder("instance", thisInstanceType).build()
-                                ).build()
-                            )
-                            .addProperty(
-                                PropertySpec.builder("instance", thisInstanceType)
-                                    .initializer(CodeBlock.of("instance"))
-                                    .build()
-                            )
-                            .addEnumConstant(
-                                "INSTANCE", TypeSpec.anonymousClassBuilder()
-                                    .apply {
-                                        if (annotation.proxy) {
-                                            addSuperclassConstructorParameter(
-                                                "%T.proxy(%T::class.java, %T(Commons.builder))",
-                                                AutoProxy::class.java,
-                                                thisInstanceType,
-                                                element.asType()
-                                            )
-                                        } else {
-                                            addSuperclassConstructorParameter(
-                                                "%T(Commons.builder)",
-                                                element.asType()
-                                            )
-                                        }
-
-                                    }
-                                    .build()
-                            )
-                            .build()
-                    )
-                    .addType(makeCommonsType(roundEnv, thisInstanceType))
-                    .build()
-            )
-            .build()
-    }
-
-    fun makeCommonsType(roundEnv: RoundEnvironment, thisInstanceType: TypeName): TypeSpec {
-        val builder = TypeSpec.objectBuilder("Commons").addModifiers(KModifier.PRIVATE)
-
-        val instanceClass = mutableListOf<TypeName>()
-        val instanceTypeClass = mutableListOf<TypeName>()
-        roundEnv.getElementsAnnotatedWith(SDKModule::class.java)?.let { elements ->
-            for (element in elements) {
-                when (element.kind) {
-                    ElementKind.CLASS -> instanceClass.add(element.asType().asTypeName())
-                    ElementKind.INTERFACE -> instanceTypeClass.add(element.asType().asTypeName())
-                    else -> {}
-                }
-            }
-        }
-        builder.addProperty(
-            PropertySpec.builder(
-                "instances",
-                List::class
-                    .parameterizedBy(Any::class),
-                KModifier.PRIVATE
-            )
-                .initializer("listOf(${instanceClass.joinToString { "%T()" }})", *(instanceClass.toTypedArray()))
-                .build()
-        )
-        builder.addProperty(
-            PropertySpec.builder(
-                "instanceTypes",
-                List::class.asTypeName()
-                    .parameterizedBy(
-                        KClass::class.asTypeName()
-                            .parameterizedBy(TypeVariableName("*"))
-                    ),
-                KModifier.PRIVATE
-            )
-                .initializer(
-                    "listOf(${instanceTypeClass.joinToString { "%T::class" }})",
-                    *(instanceTypeClass.toTypedArray())
-                )
-                .build()
-        )
-
-        builder.addProperty(
-            PropertySpec.builder("modulesHelper", ModulesHelper::class, KModifier.PRIVATE)
-                .initializer("%T(instances, instanceTypes)", ModulesHelper::class)
-                .build()
-        )
-
-
-        builder.addProperty(
-            PropertySpec.builder(
-                "builder", ProxyHelperBuilder::class.asTypeName()
-                    .parameterizedBy(thisInstanceType)
-            )
-                .initializer("%T(%T::class, modulesHelper)", ProxyHelperBuilder::class, thisInstanceType)
-                .build()
-        )
-
-        return builder.build()
-
     }
 
     override fun getSupportedAnnotationTypes(): Set<String?> {
         return setOf(
-            SDKModuleSingleInstance::class.java.canonicalName,
-            SDKModule::class.java.canonicalName,
+            *SDKProcessorBuilder.ANNOTATIONS.toTypedArray(),
+            *SDKProcessor2Builder.ANNOTATIONS.toTypedArray(),
         )
     }
 }

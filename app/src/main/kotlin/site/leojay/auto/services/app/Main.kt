@@ -2,8 +2,9 @@ package site.leojay.auto.services.app
 
 import site.leojay.auto.services.utils.ProxyHelperBuilder
 import site.leojay.auto.services.utils.ProxyInstance
-import site.leojay.auto.services.utils.annotation.SDKModuleSingleInstance
 import site.leojay.auto.services.utils.annotation.SDKModule
+import site.leojay.auto.services.utils.annotation.SDKModuleSingleInstance
+import java.util.ServiceLoader
 import java.util.logging.Logger
 
 /**
@@ -17,19 +18,6 @@ fun main() {
     LeojayProxySDK.instance().init()
 }
 
-interface SDKFactory : AuthFactory, PayFactory, InitFactory
-
-@SDKModule
-interface InitFactory {
-    fun init()
-}
-
-@SDKModule
-interface AuthFactory : InitFactory
-
-@SDKModule
-interface PayFactory : InitFactory
-
 @SDKModuleSingleInstance("LeojaySDK", implInterface = SDKFactory::class, proxy = false)
 class SingleService(val module: ProxyHelperBuilder<SDKFactory>) : SDKFactory {
     companion object {
@@ -40,11 +28,6 @@ class SingleService(val module: ProxyHelperBuilder<SDKFactory>) : SDKFactory {
         log.info("LeojaySDK init")
     }
 }
-
-@Target(AnnotationTarget.CLASS)
-@Retention(AnnotationRetention.RUNTIME)
-@MustBeDocumented
-annotation class ObjectAnnotation
 
 @SDKModuleSingleInstance("LeojayProxySDK", implInterface = SDKFactory::class, proxy = true)
 class ProxySingleService(module: ProxyHelperBuilder<SDKFactory>) : ProxyInstance<SDKFactory>(module), SDKFactory {
@@ -60,20 +43,6 @@ class ProxySingleService(module: ProxyHelperBuilder<SDKFactory>) : ProxyInstance
 
     override fun init() {
         log.info("default SDK init")
-    }
-}
-
-@SDKModule
-class AuthFactoryImpl() : AuthFactory {
-    override fun init() {
-        println("AuthFactory impl init")
-    }
-}
-
-@SDKModule
-class PayFactoryImpl() : PayFactory {
-    override fun init() {
-        println("PayFactory impl init")
     }
 }
 

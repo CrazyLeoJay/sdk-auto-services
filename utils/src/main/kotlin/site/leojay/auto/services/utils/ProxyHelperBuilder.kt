@@ -3,10 +3,11 @@ package site.leojay.auto.services.utils
 import java.lang.String
 import kotlin.Any
 import kotlin.apply
+import kotlin.let
 import kotlin.reflect.KClass
 
 /**
- * 代理辅助工具
+ * 代理辅助工具，处理注册代理的调用
  *
  * 使用场景：当有多个接口，或者多个工厂需要统一调用时，
  * 即所有的接口做一个集合，但每个接口都有对应的实现，并不能合并到一起时，这里使用动态代理加注册的方式，自动识别调用的方法是哪个类的实现。并且调用。
@@ -15,13 +16,22 @@ import kotlin.reflect.KClass
  * @author leojay`Fu
  * create for 2025/12/22
  */
-class ProxyHelperBuilder<T : Any>(
+class ProxyHelperBuilder<out T : Any>(
     interfaceClass: KClass<T>,
     private val modulesHelper: ModulesHelper = ModulesHelper(),
+    defaultInvoke: Any? = null,
 ) {
+    private val defaultInstance: T = defaultInvoke?.let {
+        return@let if (it::class == interfaceClass) {
+            it as T
+        } else {
+            null
+        }
+    } ?: AutoProxy.proxy(interfaceClass.java)
+
     private var throwListener: ThrowListener? = null
-    private val empty = AutoProxy.proxy(interfaceClass.java)
     private val proxyEntity = AutoProxy.proxy(interfaceClass.java) { _, method, args ->
+        val returnResult = AutoProxy.methodInvoke(defaultInstance, method, args)
         // 调用接口方法所在的接口类
         val declaringClass = method.declaringClass
 
@@ -49,7 +59,7 @@ class ProxyHelperBuilder<T : Any>(
                 }
             }
         }
-        return@proxy AutoProxy.methodInvoke(empty, method, args)
+        return@proxy returnResult
     }
 
     /**
