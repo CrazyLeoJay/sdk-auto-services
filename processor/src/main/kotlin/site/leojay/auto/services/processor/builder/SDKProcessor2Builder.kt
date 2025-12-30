@@ -3,13 +3,14 @@ package site.leojay.auto.services.processor.builder
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import site.leojay.auto.services.processor.AppProcessorException
+import site.leojay.auto.services.processor.builder.SDKProcessor2Builder.SDKSingleConfig.Companion.createSDKConfig
 import site.leojay.auto.services.processor.getPackagePath
 import site.leojay.auto.services.processor.getTypeForTry
 import site.leojay.auto.services.processor.joinToPackage
 import site.leojay.auto.services.utils.AutoProxy
 import site.leojay.auto.services.utils.ModulesHelper
 import site.leojay.auto.services.utils.ProxyHelperBuilder
-import site.leojay.auto.services.utils.annotation.RegisterSDKSingerInstance
+import site.leojay.auto.services.utils.annotation.RegisterSDKSingeInstance
 import site.leojay.auto.services.utils.annotation.SDKLibrary
 import site.leojay.auto.services.utils.annotation.SDKModule
 import site.leojay.auto.services.utils.annotation.SingleInstance
@@ -44,7 +45,7 @@ class SDKProcessor2Builder private constructor(
 ) {
     companion object {
         val ANNOTATIONS = setOf(
-            RegisterSDKSingerInstance::class.java.canonicalName,
+            RegisterSDKSingeInstance::class.java.canonicalName,
             SDKModule::class.java.canonicalName,
             SDKLibrary::class.java.canonicalName,
             SingleInstance::class.java.canonicalName,
@@ -71,25 +72,23 @@ class SDKProcessor2Builder private constructor(
     }
 
     fun makeBuilder(invoke: (Builder) -> Unit) {
-        roundEnv.getElementsAnnotatedWith(RegisterSDKSingerInstance::class.java).forEach { element ->
+        roundEnv.getElementsAnnotatedWith(RegisterSDKSingeInstance::class.java).forEach { element ->
             invoke(Builder(element, roundEnv, processingEnv))
         }
     }
 
-    class Builder(
-        private val element: Element,
-        private val roundEnv: RoundEnvironment,
-        private val processingEnv: ProcessingEnvironment,
-    ) {
-        val annotation = element.getAnnotation(RegisterSDKSingerInstance::class.java)!!
+    class SDKSingleConfig(element: Element, processingEnv: ProcessingEnvironment) {
+        companion object {
+            fun ProcessingEnvironment.createSDKConfig(element: Element): SDKSingleConfig {
+                return SDKSingleConfig(element, this)
+            }
+        }
+
+        val annotation = element.getAnnotation(RegisterSDKSingeInstance::class.java)!!
         val packageName: String = listOf(
             annotation.getPackagePath(element),
             annotation.packageSuffix,
         ).joinToPackage()
-
-        val instanceClass = mutableListOf<TypeName>()
-        val instanceTypeClass = mutableListOf<TypeName>()
-        val innerInstanceTypeClass = mutableListOf<TypeName>()
 
         val defaultImplTypeName = ClassName.bestGuess("${packageName}.SDKFactory")
         val defaultInnerTypeName = ClassName.bestGuess("${packageName}.AppFactory")
@@ -99,6 +98,22 @@ class SDKProcessor2Builder private constructor(
 
         //    val thisInstanceType: TypeName = sdkFactoryType
         val thisInstanceType: TypeName = appFactoryType
+
+        val abstractSDKFactoryClassName = ClassName.bestGuess("${packageName}.${annotation.value}")
+
+    }
+
+
+    class Builder(
+        private val element: Element,
+        private val roundEnv: RoundEnvironment,
+        private val processingEnv: ProcessingEnvironment,
+    ) {
+        val config = SDKSingleConfig(element, processingEnv)
+
+        val instanceClass = mutableListOf<TypeName>()
+        val instanceTypeClass = mutableListOf<TypeName>()
+        val innerInstanceTypeClass = mutableListOf<TypeName>()
 
         init {
             roundEnv.getElementsAnnotatedWith(SDKModule::class.java)?.let { elements ->
@@ -121,12 +136,12 @@ class SDKProcessor2Builder private constructor(
             }
         }
 
-        private fun createSDKFactory() = TypeSpec.interfaceBuilder(defaultImplTypeName)
+        private fun createSDKFactory() = TypeSpec.interfaceBuilder(config.defaultImplTypeName)
             .addSuperinterfaces(instanceTypeClass)
             .build()
 
-        private fun createAppFactory() = TypeSpec.interfaceBuilder(defaultInnerTypeName)
-            .addSuperinterfaces(listOf(sdkFactoryType, *innerInstanceTypeClass.toTypedArray()))
+        private fun createAppFactory() = TypeSpec.interfaceBuilder(config.defaultInnerTypeName)
+            .addSuperinterfaces(listOf(config.sdkFactoryType, *innerInstanceTypeClass.toTypedArray()))
             .build()
 
         private fun isSuperTypeOrInterface(element: Element, targetTypeName: TypeName): Boolean {
@@ -199,14 +214,14 @@ class SDKProcessor2Builder private constructor(
                 .addProperty(
                     PropertySpec.builder(
                         "builder", ProxyHelperBuilder::class.asTypeName()
-                            .parameterizedBy(thisInstanceType)
+                            .parameterizedBy(config.thisInstanceType)
                     )
                         .addModifiers(KModifier.INTERNAL)
                         .addKdoc("代理辅助工具")
                         .initializer(
                             "%T(%T::class, modulesHelper, %T())",
-                            ProxyHelperBuilder::class.asTypeName().parameterizedBy(thisInstanceType),
-                            thisInstanceType,
+                            ProxyHelperBuilder::class.asTypeName().parameterizedBy(config.thisInstanceType),
+                            config.thisInstanceType,
                             element.asType(),
                         )
                         .build()
@@ -215,22 +230,22 @@ class SDKProcessor2Builder private constructor(
         }
 
         private fun createAbstractSDKFactory(): TypeSpec {
-            val sdkName = ClassName.bestGuess("${packageName}.${annotation.value}")
-            val type = sdkFactoryType.let {
+            val sdkName = config.abstractSDKFactoryClassName
+            val type = config.sdkFactoryType.let {
                 ClassName.bestGuess(it.toString()).simpleName
             }
 
             return TypeSpec.classBuilder("Abstract$type")
                 .addModifiers(KModifier.ABSTRACT)
-                .addSuperinterface(sdkFactoryType)
+                .addSuperinterface(config.sdkFactoryType)
                 .addSuperinterface(InvocationHandler::class)
                 .addProperty(
-                    PropertySpec.builder("app", thisInstanceType, KModifier.PROTECTED)
+                    PropertySpec.builder("app", config.thisInstanceType, KModifier.PROTECTED)
                         .initializer("%T.instance()", sdkName)
                         .build()
                 )
                 .addProperty(
-                    PropertySpec.builder("sdk", sdkFactoryType, KModifier.PRIVATE)
+                    PropertySpec.builder("sdk", config.sdkFactoryType, KModifier.PRIVATE)
                         .initializer("%T.instance()", sdkName)
                         .build()
                 )
@@ -258,10 +273,10 @@ class SDKProcessor2Builder private constructor(
                 .build()
         }
 
-        fun build() = FileSpec.builder(packageName, annotation.value)
+        fun build() = FileSpec.builder(config.packageName, config.annotation.value)
             .addImport(AutoProxy::class, "autoInvoke")
             .addType(
-                TypeSpec.classBuilder(annotation.value)
+                TypeSpec.classBuilder(config.annotation.value)
                     .apply {
                         try {
                             Class.forName("android.support.annotation.Keep")
@@ -278,12 +293,12 @@ class SDKProcessor2Builder private constructor(
                                     .addAnnotation(JvmStatic::class)
                                     .addKdoc("SDK 实例")
                                     .addCode("return SingleEnum.INSTANCE.factory")
-                                    .returns(thisInstanceType)
+                                    .returns(config.thisInstanceType)
                                     .build()
                             )
                             .build()
                     )
-                    .addType(createSingleEnum(thisInstanceType, {
+                    .addType(createSingleEnum(config.thisInstanceType, {
                         addKdoc("直接用注解类实例实现")
                         addSuperclassConstructorParameter("Commons.builder.build()")
                     }))
@@ -297,17 +312,18 @@ class SDKProcessor2Builder private constructor(
          * 接口定义类实现
          */
         fun buildInterface(filer: Filer) {
-            if (annotation.isAny { this.implInterface }) {
+            if (config.annotation.isAny { this.implInterface }) {
                 try {
-                    FileSpec.builder(defaultImplTypeName)
+                    FileSpec.builder(config.defaultImplTypeName)
                         .addType(createSDKFactory())
                         .build().writeTo(filer)
                 } catch (e: Exception) {
                 }
             }
-            if (annotation.isAny { this.innerInterface }) {
+
+            if (config.annotation.isAny { this.innerInterface }) {
                 try {
-                    FileSpec.builder(defaultInnerTypeName)
+                    FileSpec.builder(config.defaultInnerTypeName)
                         .addType(createAppFactory())
                         .build().writeTo(filer)
                 } catch (e: FilerException) {
@@ -335,7 +351,19 @@ class SDKProcessor2Builder private constructor(
                 singleInstance.packageSuffix,
             ).joinToPackage()
 
-            val returnType: TypeName = processingEnv.getTypeName { singleInstance.implInterface }
+            val returnType: TypeName = getTypeForTry { singleInstance.implInterface }!!.let {
+                val type = processingEnv.typeUtils.asElement(it)
+                if (type.kind == ElementKind.CLASS) {
+                    val annotation = type.getAnnotation(RegisterSDKSingeInstance::class.java)
+                    if (null != annotation) {
+                        return@let processingEnv.createSDKConfig(type).sdkFactoryType
+                    }
+                    throw AppProcessorException("注解参数 SingleInstance#implInterface 是类，但没有注解 RegisterSDKSingeInstance")
+                }
+                if (type.kind != ElementKind.INTERFACE) throw AppProcessorException("必须是接口类，或者注解了 @RegisterSDKSingeInstance 的类")
+                if (type.getPackagePath() == "<Any>?") throw AppProcessorException("${type.toString()}未找到，如果是通过注解 RegisterSDKSingeInstance 生成的SDKFactory，可以直接修改为注解导入注解了RegisterSDKSingeInstance的实体")
+                it.asTypeName()
+            }
 
             FileSpec.builder(packageName, singleInstance.value)
                 .addType(
@@ -361,8 +389,8 @@ class SDKProcessor2Builder private constructor(
 }
 
 
-private fun RegisterSDKSingerInstance.isAny(
-    invoke: RegisterSDKSingerInstance.() -> Unit,
+private fun RegisterSDKSingeInstance.isAny(
+    invoke: RegisterSDKSingeInstance.() -> Unit,
 ): Boolean {
     return getTypeForTry { invoke.invoke(this) }?.let {
         "java.lang.Object" == (it.toString())
@@ -386,13 +414,6 @@ private fun ProcessingEnvironment.getTypeNameNotDefOrDefault(
         it.asTypeName()
     }
 }
-
-private fun ProcessingEnvironment.getTypeName(
-    invoke: () -> Unit,
-): TypeName {
-    return getTypeForTry { invoke.invoke() }!!.asTypeName()
-}
-
 
 private fun createSingleEnum(returnKClassType: TypeName, singleInstanceInvoke: TypeSpec.Builder.() -> Unit): TypeSpec {
     return TypeSpec.enumBuilder("SingleEnum")

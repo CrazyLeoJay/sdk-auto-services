@@ -10,7 +10,7 @@ import site.leojay.auto.services.utils.annotation.SDKModule
  * create for 2025/12/22
  */
 
-interface SDKFactory : AuthFactory, PayFactory, InitFactory
+interface DefSDKFactory : AuthFactory, PayFactory, InitFactory
 
 @SDKModule
 interface InitFactory {

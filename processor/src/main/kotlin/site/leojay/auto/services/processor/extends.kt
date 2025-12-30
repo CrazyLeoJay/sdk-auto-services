@@ -1,6 +1,6 @@
 package site.leojay.auto.services.processor
 
-import site.leojay.auto.services.utils.annotation.RegisterSDKSingerInstance
+import site.leojay.auto.services.utils.annotation.RegisterSDKSingeInstance
 import site.leojay.auto.services.utils.annotation.SDKModuleSingleInstance
 import javax.lang.model.element.Element
 import javax.lang.model.type.MirroredTypeException
@@ -22,7 +22,7 @@ fun SDKModuleSingleInstance.getPackagePath(element: Element): String {
     return this.packagePath
 }
 
-fun RegisterSDKSingerInstance.getPackagePath(element: Element): String {
+fun RegisterSDKSingeInstance.getPackagePath(element: Element): String {
     if (this.packagePath.isBlank()) {
         return element.toString().replace("." + element.simpleName, "")
     }

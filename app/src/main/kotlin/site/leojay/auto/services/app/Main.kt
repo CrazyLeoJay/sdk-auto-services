@@ -2,9 +2,7 @@ package site.leojay.auto.services.app
 
 import site.leojay.auto.services.utils.ProxyHelperBuilder
 import site.leojay.auto.services.utils.ProxyInstance
-import site.leojay.auto.services.utils.annotation.SDKModule
 import site.leojay.auto.services.utils.annotation.SDKModuleSingleInstance
-import java.util.ServiceLoader
 import java.util.logging.Logger
 
 /**
@@ -18,8 +16,8 @@ fun main() {
     LeojayProxySDK.instance().init()
 }
 
-@SDKModuleSingleInstance("LeojaySDK", implInterface = SDKFactory::class, proxy = false)
-class SingleService(val module: ProxyHelperBuilder<SDKFactory>) : SDKFactory {
+@SDKModuleSingleInstance("LeojaySDK", implInterface = DefSDKFactory::class, proxy = false)
+class SingleService(val module: ProxyHelperBuilder<DefSDKFactory>) : DefSDKFactory {
     companion object {
         private val log = Logger.getLogger(SingleService::class.java.name)
     }
@@ -29,14 +27,14 @@ class SingleService(val module: ProxyHelperBuilder<SDKFactory>) : SDKFactory {
     }
 }
 
-@SDKModuleSingleInstance("LeojayProxySDK", implInterface = SDKFactory::class, proxy = true)
-class ProxySingleService(module: ProxyHelperBuilder<SDKFactory>) : ProxyInstance<SDKFactory>(module), SDKFactory {
+@SDKModuleSingleInstance("LeojayProxySDK", implInterface = DefSDKFactory::class, proxy = true)
+class ProxySingleService(module: ProxyHelperBuilder<DefSDKFactory>) : ProxyInstance<DefSDKFactory>(module), DefSDKFactory {
 
     companion object {
         private val log = Logger.getLogger(ProxySingleService::class.java.name)
     }
 
-    override fun defaultSDKEntity(): SDKFactory {
+    override fun defaultSDKEntity(): DefSDKFactory {
         // 不可以new新实例，最好是在Class中创建后再引用，或者使用this
         return this
     }

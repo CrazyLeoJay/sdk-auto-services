@@ -1,8 +1,8 @@
 package site.leojay.auto.services.app
 
 import site.leojay.auto.services.app.register.AppFactory
-import site.leojay.auto.services.app.register.AppSDKRegisterThis
-import site.leojay.auto.services.utils.annotation.RegisterSDKSingerInstance
+import site.leojay.auto.services.app.register.AppSDK
+import site.leojay.auto.services.utils.annotation.RegisterSDKSingeInstance
 import site.leojay.auto.services.utils.annotation.SingleInstance
 
 /**
@@ -15,13 +15,14 @@ import site.leojay.auto.services.utils.annotation.SingleInstance
 /**
  * 没有主体的 SDK 单例
  */
-@RegisterSDKSingerInstance("AppSDK", packageSuffix = "core")
+@RegisterSDKSingeInstance("AppSDK", packageSuffix = "core")
 class AppNoMainLibraryService
 
 
-@RegisterSDKSingerInstance(
-    "AppSDKRegisterThis",
-    SDKFactory::class,
+@RegisterSDKSingeInstance(
+    "AppSDK",
+//    implInterface = SDKFactory::class,
+//    innerInterface = ,
     packageSuffix = "register"
 )
 class AppRegisterThisLibraryService : AppFactory {
@@ -37,10 +38,10 @@ class AppRegisterThisLibraryService : AppFactory {
 
 @SingleInstance(
     "LeojaySDK",
-    implInterface = SDKFactory::class,
+    implInterface = AppRegisterThisLibraryService::class,
     packageSuffix = "register.sdk"
 )
-class AppRegisterImpl : AppSDKRegisterThis.AbstractSDKFactory() {
+class AppRegisterImpl : AppSDK.AbstractSDKFactory() {
 
     init {
         app.registerConfig(Config("AppRegister 配置"))
