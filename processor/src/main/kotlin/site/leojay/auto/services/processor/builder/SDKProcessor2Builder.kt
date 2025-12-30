@@ -71,9 +71,9 @@ class SDKProcessor2Builder private constructor(
         }
     }
 
-    fun makeBuilder(invoke: (Builder) -> Unit) {
+    fun makeBuilder(invoke: (SingleAnnotationBuilder) -> Unit) {
         roundEnv.getElementsAnnotatedWith(RegisterSDKSingeInstance::class.java).forEach { element ->
-            invoke(Builder(element, roundEnv, processingEnv))
+            invoke(SingleAnnotationBuilder(element, roundEnv, processingEnv))
         }
     }
 
@@ -103,14 +103,15 @@ class SDKProcessor2Builder private constructor(
 
     }
 
-
-    class Builder(
+    /**
+     * 获取单例注解构建者
+     */
+    class SingleAnnotationBuilder(
         private val element: Element,
         private val roundEnv: RoundEnvironment,
         private val processingEnv: ProcessingEnvironment,
     ) {
         val config = SDKSingleConfig(element, processingEnv)
-
         val instanceClass = mutableListOf<TypeName>()
         val instanceTypeClass = mutableListOf<TypeName>()
         val innerInstanceTypeClass = mutableListOf<TypeName>()
@@ -289,7 +290,7 @@ class SDKProcessor2Builder private constructor(
                     .addType(
                         TypeSpec.companionObjectBuilder()
                             .addFunction(
-                                FunSpec.builder("instance")
+                                FunSpec.builder(config.annotation.methodName)
                                     .addAnnotation(JvmStatic::class)
                                     .addKdoc("SDK 实例")
                                     .addCode("return SingleEnum.INSTANCE.factory")
@@ -371,7 +372,7 @@ class SDKProcessor2Builder private constructor(
                         .addType(
                             TypeSpec.companionObjectBuilder()
                                 .addFunction(
-                                    FunSpec.builder("instance")
+                                    FunSpec.builder(singleInstance.methodName)
                                         .addCode("return SingleEnum.INSTANCE.factory")
                                         .returns(returnType)
                                         .build()

@@ -24,4 +24,5 @@ annotation class RegisterSDKSingeInstance(
     val packagePath: String = "",
     val packageSuffix: String = "auto",
     val proxy: Boolean = false,
+    val methodName:String = "instance",
 )
